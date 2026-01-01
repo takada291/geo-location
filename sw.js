@@ -1,6 +1,6 @@
 const CACHE_NAME = 'geo-app-v1';
 const urlsToCache = [
-  'geo-location.html',
+  'index.html',
   'manifest.json'
 ];
 
@@ -20,4 +20,5 @@ self.addEventListener('fetch', (event) => {
       return response || fetch(event.request);
     })
   );
+
 });
