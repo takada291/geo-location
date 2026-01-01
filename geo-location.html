@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>座標記録（修正版）</title>
+    <style>
+        body { font-family: sans-serif; margin: 10px; background-color: #f0f4f8; color: #333; -webkit-tap-highlight-color: transparent; }
+        .card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); max-width: 600px; margin: auto; }
+        h1 { font-size: 1.1rem; margin-top: 0; color: #004a99; text-align: center; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        .setting-group { margin-bottom: 15px; background: #eef; padding: 10px; border-radius: 8px; }
+        select { width: 100%; padding: 12px; font-size: 1rem; border-radius: 6px; border: 1px solid #ccc; background: white; }
+        .display { background: #333; color: #0f0; padding: 15px; border-radius: 8px; margin-bottom: 15px; font-family: monospace; }
+        .display div { display: flex; justify-content: space-between; margin-bottom: 3px; font-size: 0.9rem; }
+        .display .val { font-weight: bold; color: #fff; }
+        button { width: 100%; padding: 14px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 1rem; margin-bottom: 10px; }
+        .btn-gps { background: #007bff; color: white; }
+        .btn-save { background: #28a745; color: white; }
+        .btn-csv { background: #6c757d; color: white; }
+        input[type="text"] { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; margin-bottom: 10px; font-size: 1rem; }
+        .table-container { overflow-x: auto; margin-top: 20px; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.75rem; min-width: 500px; }
+        th, td { border-bottom: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background: #f8f9fa; color: #666; }
+        #status { font-size: 0.8rem; color: #666; text-align: center; margin-bottom: 5px; }
+        .btn-clear { background: #fff; color: #dc3545; border: 1px solid #dc3545; font-size: 0.8rem; padding: 10px; margin-top: 20px; width: 100%; }
+        .btn-clear:active { background: #fdf2f2; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h1>GPS座標記録・CSV出力</h1>
+    
+    <div class="setting-group">
+        <label style="font-size:0.8rem; font-weight:bold;">座標系選択:</label>
+        <select id="systemSelect">
+            <option value="1">第 1 系</option><option value="2">第 2 系</option>
+            <option value="3">第 3 系</option><option value="4">第 4 系</option>
+            <option value="5">第 5 系</option><option value="6" selected>第 6 系 (福井等)</option>
+            <option value="7">第 7 系</option><option value="8">第 8 系</option>
+            <option value="9">第 9 系</option><option value="10">第 10 系</option>
+            <option value="11">第 11 系</option><option value="12">第 12 系</option>
+            <option value="13">第 13 系</option><option value="14">第 14 系</option>
+            <option value="15">第 15 系</option><option value="16">第 16 系</option>
+            <option value="17">第 17 系</option><option value="18">第 18 系</option>
+            <option value="19">第 19 系</option>
+        </select>
+    </div>
+
+    <div class="display">
+        <div><span>緯度:</span> <span class="val" id="lat">---</span></div>
+        <div><span>経度:</span> <span class="val" id="lon">---</span></div>
+        <hr style="border:0; border-top:1px solid #555;">
+        <div><span>X (北方向):</span> <span class="val" id="posX">---</span> m</div>
+        <div><span>Y (東方向):</span> <span class="val" id="posY">---</span> m</div>
+    </div>
+
+    <div id="status">現在地を取得してください</div>
+    <button class="btn-gps" id="btnGps">現在地を取得</button>
+    
+    <input type="text" id="memo" placeholder="メモを入力">
+    <button class="btn-save" id="btnSave">データを保存</button>
+    <button class="btn-csv" id="btnCsv">CSV形式で出力</button>
+
+    <div class="table-container">
+        <table id="dataTable">
+            <thead>
+                <tr>
+                    <th>日付時刻</th>
+                    <th>系</th>
+                    <th>X (m)</th>
+                    <th>Y (m)</th>
+                    <th>メモ</th>
+                </tr>
+            </thead>
+            <tbody id="dataBody"></tbody>
+        </table>
+    </div>
+
+    <button class="btn-clear" id="btnClear">全データを消去する</button>
+</div>
+
+<script>
+   if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+            .then(reg => console.log('PWA準備完了'))
+            .catch(err => console.error('PWA登録失敗', err));
+    });
+}
+   const SYSTEM_ORIGINS = {
+        1:[33,129.5], 2:[33,131], 3:[36,132.166666666], 4:[33,133.5], 5:[33,134.333333333],
+        6:[36,136], 7:[36,137.166666666], 8:[36,138.5], 9:[36,139.833333333], 10:[40,140.833333333],
+        11:[40,142.833333333], 12:[44,142.25], 13:[44,143.333333333], 14:[44,145.833333333],
+        15:[26,124], 16:[26,127], 17:[26,131], 18:[20,136], 19:[26,154]
+    };
+
+    let currentRaw = null;
+    const STORAGE_KEY = 'geoDataV5';
+
+    function convert(lat, lon, sysId) {
+        const origin = SYSTEM_ORIGINS[sysId];
+        const phi0 = origin[0] * Math.PI / 180;
+        const lam0 = origin[1] * Math.PI / 180;
+        const phi = lat * Math.PI / 180;
+        const lam = lon * Math.PI / 180;
+        const a = 6378137.0, f = 1/298.257222101, m0 = 0.9999;
+        const e2 = f*(2-f), n = f/(2-f);
+        const ap = (a/(1+n))*(1 + (n**2)/4 + (n**4)/64);
+        const beta = [0, (1/2)*n-(2/3)*(n**2)+(5/16)*(n**3), (13/48)*(n**2)-(3/5)*(n**3), (61/240)*(n**3)];
+        const dl = lam - lam0;
+        const t = Math.sinh(Math.atanh(Math.sin(phi)) - (2*Math.sqrt(n)/(1+n))*Math.atanh((2*Math.sqrt(n)/(1+n))*Math.sin(phi)));
+        const xip = Math.atan(t / Math.cos(dl)), etap = Math.atanh(Math.sin(dl) / Math.sqrt(1 + t**2));
+        let xi = xip, eta = etap;
+        for(let j=1; j<=3; j++) {
+            xi += beta[j]*Math.sin(2*j*xip)*Math.cosh(2*j*etap);
+            eta += beta[j]*Math.cos(2*j*xip)*Math.sinh(2*j*etap);
+        }
+        const s = (p) => {
+            const A = 1 + (3/4)*e2 + (45/64)*(e2**2) + (175/256)*(e2**3);
+            const B = (3/4)*e2 + (15/16)*(e2**2) + (525/512)*(e2**3);
+            const C = (15/64)*(e2**2) + (105/256)*(e2**3);
+            return a*(1-e2)*(A*p - (B/2)*Math.sin(2*p) + (C/4)*Math.sin(4*p));
+        };
+        return { x: m0*ap*xi - m0*s(phi0), y: m0*ap*eta };
+    }
+
+    function getLocation() {
+        const status = document.getElementById('status');
+        status.innerText = "取得中...";
+        navigator.geolocation.getCurrentPosition(
+            pos => {
+                status.innerText = "取得成功";
+                currentRaw = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+                updateCoordsIfPossible();
+            },
+            err => {
+                status.innerText = "エラー: " + err.message;
+                alert("GPS取得に失敗しました。位置情報を許可してください。");
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+    }
+
+    function updateCoordsIfPossible() {
+        if (!currentRaw) return;
+        const sysId = document.getElementById('systemSelect').value;
+        const res = convert(currentRaw.lat, currentRaw.lon, sysId);
+        document.getElementById('lat').innerText = currentRaw.lat.toFixed(6);
+        document.getElementById('lon').innerText = currentRaw.lon.toFixed(6);
+        document.getElementById('posX').innerText = res.x.toFixed(3);
+        document.getElementById('posY').innerText = res.y.toFixed(3);
+        currentRaw.x = res.x; currentRaw.y = res.y; currentRaw.system = sysId;
+    }
+
+    function saveData() {
+        if (!currentRaw) return alert("まずは現在地を取得してください");
+        const now = new Date();
+        const timestamp = now.getFullYear() + "/" + ("0"+(now.getMonth()+1)).slice(-2) + "/" + ("0"+now.getDate()).slice(-2) + " " + now.toLocaleTimeString('ja-JP');
+        const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+        data.push({ time: timestamp, ...currentRaw, memo: document.getElementById('memo').value });
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        document.getElementById('memo').value = "";
+        render();
+        alert("保存しました");
+    }
+
+    function render() {
+        const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+        const html = data.slice().reverse().map(d => 
+            `<tr><td>${d.time}</td><td>${d.system}系</td><td>${d.x.toFixed(1)}</td><td>${d.y.toFixed(1)}</td><td>${d.memo}</td></tr>`
+        ).join('');
+        document.getElementById('dataBody').innerHTML = html;
+    }
+
+    function exportCSV() {
+        const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+        if(data.length === 0) return alert("データがありません");
+        
+        let csv = "\uFEFF日時,系,緯度,経度,X(m),Y(m),メモ\n";
+        data.forEach(d => {
+            csv += `${d.time},${d.system},${d.lat},${d.lon},${d.x.toFixed(3)},${d.y.toFixed(3)},${d.memo}\n`;
+        });
+        
+        const now = new Date();
+        const dateStr = now.getFullYear() + ("0" + (now.getMonth() + 1)).slice(-2) + ("0" + now.getDate()).slice(-2);
+        const timeStr = ("0" + now.getHours()).slice(-2) + ("0" + now.getMinutes()).slice(-2) + ("0" + now.getSeconds()).slice(-2);
+        const fileName = `survey_data_${dateStr}_${timeStr}.csv`;
+        
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
+
+    function clearData() {
+        // iOS Edge/Safariで確実に動作させるための記述
+        const result = window.confirm("保存されている全てのデータを消去します。よろしいですか？");
+        if(result) {
+            localStorage.removeItem(STORAGE_KEY);
+            render();
+            alert("消去が完了しました");
+        }
+    }
+
+    // イベントリスナーの登録（iOSでの動作安定性向上のため）
+    document.getElementById('btnGps').addEventListener('click', getLocation);
+    document.getElementById('btnSave').addEventListener('click', saveData);
+    document.getElementById('btnCsv').addEventListener('click', exportCSV);
+    document.getElementById('btnClear').addEventListener('click', clearData);
+    document.getElementById('systemSelect').addEventListener('change', updateCoordsIfPossible);
+
+    // 初回読み込み
+    render();
+</script>
+</body>
+</html>
