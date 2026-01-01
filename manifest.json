@@ -2,7 +2,7 @@
   "name": "座標記録ツール",
   "short_name": "座標記録",
   "description": "オフラインでGPS座標を記録するツール",
-  "start_url": "geo-location.html",
+  "start_url": "index.html",
   "display": "standalone",
   "background_color": "#f0f4f8",
   "theme_color": "#004a99",
@@ -18,4 +18,5 @@
       "type": "image/png"
     }
   ]
+
 }
