@@ -1,7 +1,7 @@
 {
   "name": "座標記録ツール",
   "short_name": "座標記録",
-  "start_url": "index.html",
+  "start_url": "./index.html",
   "display": "standalone",
   "icons": [
     {
@@ -11,4 +11,5 @@
     }
   ]
 }
+
 
