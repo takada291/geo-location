@@ -1,4 +1,4 @@
-const CACHE_NAME = 'geo-app-v2'; // ここをv1からv2に変えるだけで更新されます
+const CACHE_NAME = 'geo-app-v3'; // バージョンをv3に上げる
 const urlsToCache = [
   './',
   'index.html',
@@ -13,7 +13,7 @@ self.addEventListener('install', (event) => {
       return cache.addAll(urlsToCache);
     })
   );
-  self.skipWaiting(); // すぐに新しい設定を適用する
+  self.skipWaiting();
 });
 
 self.addEventListener('fetch', (event) => {
