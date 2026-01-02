@@ -31,7 +31,7 @@
 <body>
 
 <div class="card">
-    <h1>GPS座標記録・CSV出力</h1>
+    <h1>GPS座標変換・CSV出力</h1>
     
     <div class="setting-group">
         <label style="font-size:0.8rem; font-weight:bold;">座標系選択:</label>
@@ -187,7 +187,7 @@
         const now = new Date();
         const dateStr = now.getFullYear() + ("0" + (now.getMonth() + 1)).slice(-2) + ("0" + now.getDate()).slice(-2);
         const timeStr = ("0" + now.getHours()).slice(-2) + ("0" + now.getMinutes()).slice(-2) + ("0" + now.getSeconds()).slice(-2);
-        const fileName = `survey_data_${dateStr}_${timeStr}.csv`;
+        const fileName = `geo-location_data_${dateStr}_${timeStr}.csv`;
         
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const a = document.createElement('a');
@@ -220,5 +220,6 @@
 </script>
 </body>
 </html>
+
 
 
