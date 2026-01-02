@@ -1,22 +1,13 @@
 {
   "name": "座標記録ツール",
   "short_name": "座標記録",
-  "description": "オフラインでGPS座標を記録するツール",
-  "start_url": "index.html",
-  "display": "standalone",
-  "background_color": "#f0f4f8",
-  "theme_color": "#004a99",
   "icons": [
     {
-      "src": "icon-192.png",
+      "src": "icon-192.png", 
       "sizes": "192x192",
       "type": "image/png"
-    },
-    {
-      "src": "icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png"
     }
-  ]
-
+  ],
+  "start_url": "index.html",
+  "display": "standalone"
 }
