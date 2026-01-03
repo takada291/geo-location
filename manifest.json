@@ -1,6 +1,6 @@
 {
-  "name": "座標記録ツール",
-  "short_name": "座標記録",
+  "name": "座標変換ツール",
+  "short_name": "座標変換",
   "start_url": "./index.html",
   "display": "standalone",
   "icons": [
@@ -11,5 +11,6 @@
     }
   ]
 }
+
 
 
