@@ -1,28 +1,26 @@
-const CACHE_NAME = 'geo-app-v1.1'; // v1.1に上げる20260106
-const urlsToCache = [
-  './',
-  'index.html',
-  'manifest.json',
-  'sw.js',
-  'icon-192.png'
-];
+const CACHE_NAME = 'geo-app-v1.2'; // v1.2に上げる20260106
+// ... urlsToCache の記述 ...
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(urlsToCache);
-    })
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(urlsToCache))
   );
-  self.skipWaiting();
+  // 【重要】新しいSWを即座に有効化する
+  self.skipWaiting(); 
 });
 
-self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    caches.match(event.request).then((response) => {
-      return response || fetch(event.request);
+// 【追加】古いキャッシュを削除する処理（これを書かないと古いファイルが残り続けます）
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cacheName) => {
+          if (cacheName !== CACHE_NAME) {
+            console.log('古いキャッシュを削除中:', cacheName);
+            return caches.delete(cacheName);
+          }
+        })
+      );
     })
   );
 });
-
-
-
