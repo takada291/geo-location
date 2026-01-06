@@ -92,7 +92,7 @@
                 if (installingWorker.state === 'installed') {
                     if (navigator.serviceWorker.controller) {
                         // 新しいコンテンツがあることを通知
-                        if (confirm("最新バージョンがあります。更新しますか？")) {
+                        if (confirm("最新バージョンがあります。更新する場合はデータを空にしてください。")) {
                             location.reload(); // 再読み込みで新版を適用
                         }
                     }
@@ -231,6 +231,7 @@
 </script>
 </body>
 </html>
+
 
 
 
