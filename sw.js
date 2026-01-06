@@ -7,11 +7,10 @@ const urlsToCache = [
   'icon-192.png'
 ];
 
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(urlsToCache))
-  );
-  self.skipWaiting(); 
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 // 新しいバージョンを即座に適用する命令を受け取る
@@ -40,3 +39,4 @@ self.addEventListener('fetch', (event) => {
     caches.match(event.request).then((res) => res || fetch(event.request))
   );
 });
+
