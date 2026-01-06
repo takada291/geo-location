@@ -1,22 +1,32 @@
-const CACHE_NAME = 'geo-app-v1.1'; // v1.1に上げる20260106
-// ... urlsToCache の記述 ...
+const CACHE_NAME = 'tree-survey-final-v4'; // バージョンを上げる
+const urlsToCache = [
+  './',
+  'index.html',
+  'manifest.json',
+  'sw.js',
+  'icon-192.png'
+];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(urlsToCache))
   );
-  // 【重要】新しいSWを即座に有効化する
   self.skipWaiting(); 
 });
 
-// 【追加】古いキャッシュを削除する処理（これを書かないと古いファイルが残り続けます）
+// 新しいバージョンを即座に適用する命令を受け取る
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
           if (cacheName !== CACHE_NAME) {
-            console.log('古いキャッシュを削除中:', cacheName);
             return caches.delete(cacheName);
           }
         })
@@ -25,4 +35,8 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-
+self.addEventListener('fetch', (event) => {
+  event.respondWith(
+    caches.match(event.request).then((res) => res || fetch(event.request))
+  );
+});
