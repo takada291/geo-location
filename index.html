@@ -31,7 +31,7 @@
 <body>
 
 <div class="card">
-    <h1>GPS座標変換・CSV出力</h1>
+    <h1>GPS座標変換・CSV出力v1.0</h1>
     
     <div class="setting-group">
         <label style="font-size:0.8rem; font-weight:bold;">座標系選択:</label>
@@ -84,10 +84,21 @@
 
 <script>
    if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js')
-            .then(reg => console.log('PWA準備完了'))
-            .catch(err => console.error('PWA登録失敗', err));
+    navigator.serviceWorker.register('./sw.js').then(reg => {
+        // 更新が見つかった場合の処理
+        reg.onupdatefound = () => {
+            const installingWorker = reg.installing;
+            installingWorker.onstatechange = () => {
+                if (installingWorker.state === 'installed') {
+                    if (navigator.serviceWorker.controller) {
+                        // 新しいコンテンツがあることを通知
+                        if (confirm("最新バージョンがあります。更新しますか？")) {
+                            location.reload(); // 再読み込みで新版を適用
+                        }
+                    }
+                }
+            };
+        };
     });
 }
    const SYSTEM_ORIGINS = {
@@ -220,6 +231,7 @@
 </script>
 </body>
 </html>
+
 
 
 
