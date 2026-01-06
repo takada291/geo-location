@@ -1,4 +1,4 @@
-const CACHE_NAME = 'geo-app-v4'; // バージョンをv4に上げる20260103
+const CACHE_NAME = 'geo-app-v1.0'; // v1.0に上げる20260106
 const urlsToCache = [
   './',
   'index.html',
@@ -23,4 +23,5 @@ self.addEventListener('fetch', (event) => {
     })
   );
 });
+
 
