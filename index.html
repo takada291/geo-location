@@ -85,15 +85,19 @@
 <script>
    if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').then(reg => {
-        // 更新が見つかった場合の処理
         reg.onupdatefound = () => {
             const installingWorker = reg.installing;
             installingWorker.onstatechange = () => {
                 if (installingWorker.state === 'installed') {
                     if (navigator.serviceWorker.controller) {
-                        // 新しいコンテンツがあることを通知
-                        if (confirm("最新バージョンがあります。更新する場合はデータを空にしてください。")) {
-                            location.reload(); // 再読み込みで新版を適用
+                        // 更新通知
+                        if (confirm("最新版があります。更新する場合、データを空にしてください。")) {
+                            // サービスワーカーに「今すぐ入れ替わって」とメッセージを送る
+                            if (reg.waiting) {
+                                reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+                            }
+                            // ブラウザをリロード
+                            window.location.reload();
                         }
                     }
                 }
@@ -231,6 +235,7 @@
 </script>
 </body>
 </html>
+
 
 
 
