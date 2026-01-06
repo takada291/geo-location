@@ -30,7 +30,7 @@
 <body>
 
 <div class="card">
-    <h1>座標変換v1.1</h1>
+    <h1>座標変換v1.0</h1>
     
     <div class="setting-group">
         <label style="font-size:0.8rem; font-weight:bold;">座標系選択:</label>
@@ -91,7 +91,7 @@
                     installingWorker.onstatechange = () => {
                         if (installingWorker.state === 'installed') {
                             if (navigator.serviceWorker.controller) {
-                                if (confirm("最新バージョンがあります。更新しますか？\n（更新前にCSV出力を行ってください）")) {
+                                if (confirm("最新版があります。更新しますか？\n（CSV出力しデータを空にしてください。）")) {
                                     if (reg.waiting) {
                                         reg.waiting.postMessage({ type: 'SKIP_WAITING' });
                                     }
@@ -233,5 +233,6 @@
 </script>
 </body>
 </html>
+
 
 
