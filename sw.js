@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tree-survey-final-v4'; // バージョンを上げる
+const CACHE_NAME = 'geo-location-v1.1'; // バージョンを上げる
 const urlsToCache = [
   './',
   'index.html',
@@ -39,4 +39,5 @@ self.addEventListener('fetch', (event) => {
     caches.match(event.request).then((res) => res || fetch(event.request))
   );
 });
+
 
