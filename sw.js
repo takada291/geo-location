@@ -1,4 +1,4 @@
-const CACHE_NAME = 'geo-app-v1.2'; // v1.2に上げる20260106
+const CACHE_NAME = 'geo-app-v1.0'; // v1.0に上げる20260106
 // ... urlsToCache の記述 ...
 
 self.addEventListener('install', (event) => {
@@ -24,3 +24,4 @@ self.addEventListener('activate', (event) => {
     })
   );
 });
+
