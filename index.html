@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>geo-location</title>
     <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body { font-family: sans-serif; margin: 10px; background-color: #f0f4f8; color: #333; -webkit-tap-highlight-color: transparent; }
         .card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); max-width: 600px; margin: auto; }
@@ -16,9 +17,15 @@
         .display .val { font-weight: bold; color: #fff; }
         button { width: 100%; padding: 14px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 1rem; margin-bottom: 10px; }
         .btn-gps { background: #007bff; color: white; }
+        /* 新設：現在地を表示ボタン（オレンジ/黄色系） */
+        .btn-map { background: #ff9800; color: white; }
         .btn-save { background: #28a745; color: white; }
         .btn-csv { background: #6c757d; color: white; }
         input[type="text"] { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; margin-bottom: 10px; font-size: 1rem; }
+        
+        /* 地図の表示エリア */
+        #map { height: 300px; width: 100%; border-radius: 8px; margin-bottom: 15px; display: none; border: 1px solid #ccc; }
+        
         .table-container { overflow-x: auto; margin-top: 20px; }
         table { width: 100%; border-collapse: collapse; font-size: 0.75rem; min-width: 500px; }
         th, td { border-bottom: 1px solid #ddd; padding: 8px; text-align: left; }
@@ -30,8 +37,8 @@
 <body>
 
 <div class="card">
-    <h1>座標変換v1.1</h1>
-    
+    <h1>座標変換v2.0（地図表示対応）</h1>
+    <h1>事前にオンラインで調査エリアの地図を閲覧しキャッシュして下さい。</h1>
     <div class="setting-group">
         <label style="font-size:0.8rem; font-weight:bold;">座標系選択:</label>
         <select id="systemSelect">
@@ -58,6 +65,9 @@
 
     <div id="status">現在地を取得してください</div>
     <button class="btn-gps" id="btnGps">現在地を取得</button>
+    <button class="btn-map" id="btnMap">現在地を地図で表示</button>
+
+    <div id="map"></div>
     
     <input type="text" id="memo" placeholder="メモを入力">
     <button class="btn-save" id="btnSave">データを保存</button>
@@ -81,8 +91,9 @@
     <button class="btn-clear" id="btnClear">全データを消去する</button>
 </div>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    // --- PWA登録 & 更新検知コード ---
+    // --- PWA登録 & 更新検知（変更なし） ---
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             navigator.serviceWorker.register('./sw.js').then(reg => {
@@ -103,7 +114,6 @@
                 };
             }).catch(err => console.error('PWA登録失敗', err));
         });
-
         let refreshing;
         navigator.serviceWorker.addEventListener('controllerchange', () => {
             if (refreshing) return;
@@ -121,6 +131,8 @@
     };
 
     let currentRaw = null;
+    let map = null;
+    let marker = null;
     const STORAGE_KEY = 'geoDataV5';
 
     function convert(lat, lon, sysId) {
@@ -178,6 +190,30 @@
         currentRaw.x = res.x; currentRaw.y = res.y; currentRaw.system = sysId;
     }
 
+    // --- 地図表示ロジック ---
+    function showMap() {
+        if (!currentRaw) return alert("まずは現在地を取得してください");
+        
+        const mapDiv = document.getElementById('map');
+        mapDiv.style.display = 'block';
+
+        if (!map) {
+            // 地図の初期化（地理院地図：標準地図を使用）
+            map = L.map('map').setView([currentRaw.lat, currentRaw.lon], 16);
+            L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png', {
+                attribution: "<a href='https://maps.gsi.go.jp/development/ichiran.html' target='_blank'>地理院タイル</a>"
+            }).addTo(map);
+            marker = L.marker([currentRaw.lat, currentRaw.lon]).addTo(map);
+        } else {
+            // すでに地図がある場合は中心点とピンを移動
+            map.setView([currentRaw.lat, currentRaw.lon], 16);
+            marker.setLatLng([currentRaw.lat, currentRaw.lon]);
+        }
+        
+        // 地図表示後にサイズ調整（表示崩れ防止）
+        setTimeout(() => map.invalidateSize(), 100);
+    }
+
     function saveData() {
         if (!currentRaw) return alert("まずは現在地を取得してください");
         const now = new Date();
@@ -224,6 +260,7 @@
     }
 
     document.getElementById('btnGps').addEventListener('click', getLocation);
+    document.getElementById('btnMap').addEventListener('click', showMap);
     document.getElementById('btnSave').addEventListener('click', saveData);
     document.getElementById('btnCsv').addEventListener('click', exportCSV);
     document.getElementById('btnClear').addEventListener('click', clearData);
@@ -233,7 +270,3 @@
 </script>
 </body>
 </html>
-
-
-
-
