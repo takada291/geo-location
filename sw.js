@@ -1,10 +1,12 @@
-const CACHE_NAME = 'geo-location-v2.0'; // バージョンを上げてください
+const CACHE_NAME = 'geo-location-v2.1'; // バージョンを上げてください
 const urlsToCache = [
   './',
   'index.html',
   'manifest.json',
   'sw.js',
   'icon-192.png'
+  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css', // ライブラリもキャッシュ
+  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'   // ライブラリもキャッシュ
 ];
 
 // --- 1. インストール時にファイルを強制的にキャッシュ ---
@@ -65,4 +67,5 @@ self.addEventListener('fetch', (event) => {
     })
   );
 });
+
 
