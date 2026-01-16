@@ -1,4 +1,4 @@
-const CACHE_NAME = 'geo-location-v2.1'; // バージョンを上げてください
+const CACHE_NAME = 'geo-location-v2.1.1'; //2026.01.17 08:36 
 const urlsToCache = [
   './',
   'index.html',
@@ -67,5 +67,6 @@ self.addEventListener('fetch', (event) => {
     })
   );
 });
+
 
 
