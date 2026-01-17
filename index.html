@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>座標変換v2.1</title>
+    <title>座標変換v2.2</title>
     <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
@@ -36,10 +36,10 @@
         .display .val { font-weight: bold; color: #fff; }
         
         button { width: 100%; padding: 14px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 1rem; margin-bottom: 10px; }
-        .btn-gps { background: #007bff; color: white; }
+        .btn-gps { background: #007bff; color: white; margin-bottom: 5px; } /* 下のマージンを詰める */
         .btn-save { background: #28a745; color: white; }
         .btn-csv { background: #6c757d; color: white; }
-        .btn-map { background: #ff9800; color: white; margin-bottom: 5px; } /* マージン調整 */
+        .btn-map { background: #ff9800; color: white; margin-bottom: 5px; }
         .btn-clear { background: #fff; color: #dc3545; border: 1px solid #dc3545; font-size: 0.8rem; padding: 10px; margin-top: 20px; width: 100%; }
 
         input[type="text"] { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; margin-bottom: 10px; font-size: 1rem; }
@@ -52,16 +52,16 @@
         th, td { border-bottom: 1px solid #ddd; padding: 8px; text-align: left; }
         th { background: #f8f9fa; color: #666; }
         
-        /* 行タップ時の反応 */
         tbody tr:hover { background-color: #f0f8ff; cursor: pointer; }
 
-        #status { font-size: 0.8rem; color: #666; text-align: center; margin-bottom: 5px; margin-top: 10px; height: 1.2em; }
+        /* GPSステータス表示用 */
+        #status { font-size: 0.9rem; color: #007bff; text-align: center; margin-bottom: 15px; height: 1.2em; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h1>座標変換v2.1</h1>
+    <h1>座標変換v2.2</h1>
     
     <div id="drop-zone">
         📂 CSVファイルをここにドロップ<br>
@@ -95,6 +95,7 @@
     </div>
 
     <button class="btn-gps" id="btnGps">現在地を取得</button>
+    <div id="status"></div>
     
     <input type="text" id="memo" placeholder="メモを入力">
     <button class="btn-save" id="btnSave">データを保存</button>
@@ -104,7 +105,6 @@
     <p class="map-hint">地図表示中に行タップでズームします。</p>
 
     <div id="map"></div>
-    <div id="status"></div>
 
     <div class="table-container">
         <table id="dataTable">
@@ -165,7 +165,7 @@
 
     let currentRaw = null;
     let map = null;
-    let markers = []; // マーカー管理用配列
+    let markers = []; 
     const STORAGE_KEY = 'geoDataV5';
 
     function convert(lat, lon, sysId) {
@@ -197,17 +197,21 @@
 
     function getLocation() {
         const status = document.getElementById('status');
-        status.innerText = "取得中...";
+        if(!status) return; // 安全策
+        status.innerText = "GPS取得中...";
+        status.style.color = "#007bff";
         
         navigator.geolocation.getCurrentPosition(
             pos => {
                 status.innerText = "取得成功";
+                status.style.color = "#28a745";
                 currentRaw = { lat: pos.coords.latitude, lon: pos.coords.longitude };
                 updateCoordsIfPossible();
             },
             err => {
                 status.innerText = "エラー: " + err.message;
-                alert("GPS取得に失敗しました。位置情報を許可してください。");
+                status.style.color = "#dc3545";
+                alert("GPS取得に失敗しました。\n・位置情報がONか確認してください\n・HTTPS(またはlocalhost)でアクセスしていますか？");
             },
             { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
         );
@@ -224,10 +228,9 @@
         currentRaw.x = res.x; currentRaw.y = res.y; currentRaw.system = sysId;
     }
 
-    // --- 全データ地図表示ロジック (変更) ---
+    // --- 全データ地図表示ロジック ---
     function showMap() {
         const dataList = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-        // データが無くても、現在地取得済みなら表示する
         if (dataList.length === 0 && !currentRaw) {
             return alert("データがありません。保存するか現在地を取得してください。");
         }
@@ -236,20 +239,17 @@
         mapDiv.style.display = 'block';
 
         if (!map) {
-            // 初期位置は仮
             map = L.map('map');
             L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png', {
                 attribution: "<a href='https://maps.gsi.go.jp/development/ichiran.html' target='_blank'>地理院タイル</a>"
             }).addTo(map);
         }
         
-        // 既存マーカー削除
         markers.forEach(m => map.removeLayer(m));
         markers = [];
         
         const bounds = [];
 
-        // 1. 保存済みデータのピン (青)
         dataList.forEach(d => {
             const m = L.marker([d.lat, d.lon]).addTo(map);
             m.bindPopup(`<b>${d.time}</b><br>${d.memo}`);
@@ -257,7 +257,6 @@
             bounds.push([d.lat, d.lon]);
         });
 
-        // 2. 現在地があればピン (赤丸)
         if (currentRaw) {
             const m = L.circleMarker([currentRaw.lat, currentRaw.lon], {
                 color: 'red', fillColor: '#f03', fillOpacity: 0.8, radius: 8
@@ -267,26 +266,22 @@
             bounds.push([currentRaw.lat, currentRaw.lon]);
         }
 
-        // 範囲調整
         if (bounds.length > 0) {
             map.fitBounds(bounds, { padding: [30, 30] });
         } else {
-            // データなし＆現在地なしの場合（念のため）
             map.setView([36, 136], 5);
         }
         
         setTimeout(() => map.invalidateSize(), 100);
     }
 
-    // --- テーブル行クリック時のズーム ---
     function focusOnPin(lat, lon) {
         const mapDiv = document.getElementById('map');
         if (mapDiv.style.display !== 'block' || !map) {
-            showMap(); // 地図が開いてなければ開く
+            showMap(); 
         }
-        // 少し遅延させて地図描画完了を待つ
         setTimeout(() => {
-            map.setView([lat, lon], 18); // ズームレベル18で移動
+            map.setView([lat, lon], 18); 
         }, 100);
     }
 
@@ -304,7 +299,6 @@
 
     function render() {
         const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-        // データがある場合は行クリックでフォーカス移動
         const html = data.slice().reverse().map(d => 
             `<tr onclick="focusOnPin(${d.lat}, ${d.lon})">
                 <td>${d.time}</td>
@@ -346,7 +340,6 @@
         }
     }
 
-    // --- ドラッグ＆ドロップ処理 ---
     const dropZone = document.getElementById('drop-zone');
 
     dropZone.addEventListener('dragover', (e) => {
@@ -380,9 +373,6 @@
         let importedCount = 0;
         const dataList = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
         
-        // CSVフォーマット: 日時,系,緯度,経度,X,Y,メモ
-        // インデックス: 0, 1, 2, 3, 4, 5, 6
-        
         for (let i = 1; i < lines.length; i++) {
             const line = lines[i].trim();
             if (!line) continue;
@@ -390,5 +380,44 @@
             const values = line.split(',').map(v => v.trim());
             if (values.length < 6) continue;
 
-            // 重複チェック (日時、緯度、経度が一致する場合はスキップ)
-            // ※CSVからの取り込みなので厳密なIDがないため、主要データの一致で判定します
+            const isDuplicate = dataList.some(d => 
+                d.time === values[0] && 
+                Math.abs(d.lat - parseFloat(values[2])) < 0.000001 &&
+                Math.abs(d.lon - parseFloat(values[3])) < 0.000001
+            );
+
+            if (!isDuplicate) {
+                let sysVal = values[1].replace(/系/g, '');
+                const newData = {
+                    time: values[0],
+                    system: sysVal,
+                    lat: parseFloat(values[2]),
+                    lon: parseFloat(values[3]),
+                    x: parseFloat(values[4]),
+                    y: parseFloat(values[5]),
+                    memo: values[6] || ""
+                };
+                dataList.push(newData);
+                importedCount++;
+            }
+        }
+
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(dataList));
+        alert(`${importedCount}件のデータを読み込みました`);
+        render();
+        if(document.getElementById('map').style.display === 'block'){
+            showMap();
+        }
+    }
+
+    document.getElementById('btnGps').addEventListener('click', getLocation);
+    document.getElementById('btnMap').addEventListener('click', showMap);
+    document.getElementById('btnSave').addEventListener('click', saveData);
+    document.getElementById('btnCsv').addEventListener('click', exportCSV);
+    document.getElementById('btnClear').addEventListener('click', clearData);
+    document.getElementById('systemSelect').addEventListener('change', updateCoordsIfPossible);
+
+    render();
+</script>
+</body>
+</html>
