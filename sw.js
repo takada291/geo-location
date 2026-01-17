@@ -1,4 +1,4 @@
-const CACHE_NAME = 'geo-location-v2.2.0'; //2026.01.17 20:20 
+const CACHE_NAME = 'geo-location-v2.2.1'; //2026.01.18 05:03 
 const urlsToCache = [
   './',
   'index.html',
@@ -67,6 +67,7 @@ self.addEventListener('fetch', (event) => {
     })
   );
 });
+
 
 
 
