@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>座標変換v2.2</title>
+    <title>座標変換v2.3</title>
     <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
@@ -38,7 +38,8 @@
         button { width: 100%; padding: 14px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 1rem; margin-bottom: 10px; }
         .btn-gps { background: #007bff; color: white; margin-bottom: 5px; } /* 下のマージンを詰める */
         .btn-save { background: #28a745; color: white; }
-        .btn-csv { background: #6c757d; color: white; }
+        .btn-csv { background: #6c757d; color: white; margin-bottom: 5px; }
+        .btn-geojson { background: #6f42c1; color: white; } /* GIS用ボタン：紫 */
         .btn-map { background: #ff9800; color: white; margin-bottom: 5px; }
         .btn-clear { background: #fff; color: #dc3545; border: 1px solid #dc3545; font-size: 0.8rem; padding: 10px; margin-top: 20px; width: 100%; }
 
@@ -61,7 +62,7 @@
 <body>
 
 <div class="card">
-    <h1>座標変換v2.2</h1>
+    <h1>座標変換v2.3</h1>
     
     <div id="drop-zone">
         📂 PCの場合はCSVファイルをここにドラッグ＆ドロップ<br>
@@ -99,7 +100,9 @@
     
     <input type="text" id="memo" placeholder="メモを入力">
     <button class="btn-save" id="btnSave">データを保存</button>
+    
     <button class="btn-csv" id="btnCsv">CSV形式で出力</button>
+    <button class="btn-geojson" id="btnGeojson">QGIS用データ出力 (GeoJSON)</button>
     
     <button class="btn-map" id="btnMap">位置を確認</button>
     <p class="map-hint">地図表示中に行タップでズームします。</p>
@@ -320,20 +323,62 @@
         });
         
         const now = new Date();
-        const yyyy = now.getFullYear();
-        const mm = ("0" + (now.getMonth() + 1)).slice(-2);
-        const dd = ("0" + now.getDate()).slice(-2);
-        const hh = ("0" + now.getHours()).slice(-2);
-        const min = ("0" + now.getMinutes()).slice(-2);
-        
-        // ファイル名を「座標変換-YYYYMMDD-HHMM.csv」形式に変更
-        const fileName = `座標変換-${yyyy}${mm}${dd}-${hh}${min}.csv`;
+        const fileName = `座標変換-${getTimestampStr(now)}.csv`;
         
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
         a.download = fileName;
         a.click();
+    }
+
+    // --- 新規追加: GeoJSON出力機能 ---
+    function exportGeoJSON() {
+        const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+        if(data.length === 0) return alert("データがありません");
+
+        const features = data.map(d => {
+            return {
+                "type": "Feature",
+                "geometry": {
+                    "type": "Point",
+                    "coordinates": [d.lon, d.lat] // GeoJSONは [経度, 緯度] の順
+                },
+                "properties": {
+                    "time": d.time,
+                    "system": d.system + "系",
+                    "x_m": d.x,
+                    "y_m": d.y,
+                    "memo": d.memo
+                }
+            };
+        });
+
+        const geoJsonData = {
+            "type": "FeatureCollection",
+            "name": "CoordinateData",
+            "features": features
+        };
+
+        const jsonStr = JSON.stringify(geoJsonData, null, 2);
+        const now = new Date();
+        const fileName = `座標変換-${getTimestampStr(now)}.geojson`;
+
+        const blob = new Blob([jsonStr], { type: 'application/geo+json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = fileName;
+        a.click();
+    }
+
+    // 日時文字列生成用ヘルパー関数
+    function getTimestampStr(now) {
+        const yyyy = now.getFullYear();
+        const mm = ("0" + (now.getMonth() + 1)).slice(-2);
+        const dd = ("0" + now.getDate()).slice(-2);
+        const hh = ("0" + now.getHours()).slice(-2);
+        const min = ("0" + now.getMinutes()).slice(-2);
+        return `${yyyy}${mm}${dd}-${hh}${min}`;
     }
 
     function clearData() {
@@ -422,6 +467,7 @@
     document.getElementById('btnMap').addEventListener('click', showMap);
     document.getElementById('btnSave').addEventListener('click', saveData);
     document.getElementById('btnCsv').addEventListener('click', exportCSV);
+    document.getElementById('btnGeojson').addEventListener('click', exportGeoJSON); // GeoJSONイベント追加
     document.getElementById('btnClear').addEventListener('click', clearData);
     document.getElementById('systemSelect').addEventListener('change', updateCoordsIfPossible);
 
