@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>座標変換v2.3</title>
+    <title>座標変換v2.5 (完全版)</title>
     <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
@@ -38,8 +38,12 @@
         button { width: 100%; padding: 14px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 1rem; margin-bottom: 10px; }
         .btn-gps { background: #007bff; color: white; margin-bottom: 5px; } /* 下のマージンを詰める */
         .btn-save { background: #28a745; color: white; }
+        
+        /* 出力ボタン群のデザイン */
         .btn-csv { background: #6c757d; color: white; margin-bottom: 5px; }
-        .btn-geojson { background: #6f42c1; color: white; } /* GIS用ボタン：紫 */
+        .btn-geojson { background: #6f42c1; color: white; margin-bottom: 5px; } /* GIS用ボタン：紫 */
+        .btn-kml { background: #e67e22; color: white; } /* ALANDIS用ボタン：オレンジ */
+
         .btn-map { background: #ff9800; color: white; margin-bottom: 5px; }
         .btn-clear { background: #fff; color: #dc3545; border: 1px solid #dc3545; font-size: 0.8rem; padding: 10px; margin-top: 20px; width: 100%; }
 
@@ -62,7 +66,7 @@
 <body>
 
 <div class="card">
-    <h1>座標変換v2.3</h1>
+    <h1>座標変換v2.5</h1>
     
     <div id="drop-zone">
         📂 PCの場合はCSVファイルをここにドラッグ＆ドロップ<br>
@@ -102,7 +106,8 @@
     <button class="btn-save" id="btnSave">データを保存</button>
     
     <button class="btn-csv" id="btnCsv">CSV形式で出力</button>
-    <button class="btn-geojson" id="btnGeojson">QGIS用データ出力 (GeoJSON)</button>
+    <button class="btn-geojson" id="btnGeojson">GeoJSON形式で出力（QGIS用）</button>
+    <button class="btn-kml" id="btnKml">KML形式で出力（ALANDIS用）</button>
     
     <button class="btn-map" id="btnMap">位置を確認</button>
     <p class="map-hint">地図表示中に行タップでズームします。</p>
@@ -200,7 +205,7 @@
 
     function getLocation() {
         const status = document.getElementById('status');
-        if(!status) return; // 安全策
+        if(!status) return; 
         status.innerText = "GPS取得中...";
         status.style.color = "#007bff";
         
@@ -231,7 +236,6 @@
         currentRaw.x = res.x; currentRaw.y = res.y; currentRaw.system = sysId;
     }
 
-    // --- 全データ地図表示ロジック ---
     function showMap() {
         const dataList = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
         if (dataList.length === 0 && !currentRaw) {
@@ -314,6 +318,26 @@
         document.getElementById('dataBody').innerHTML = html;
     }
 
+    // --- 共通ヘルパー関数: 日時文字列生成 ---
+    function getTimestampStr(now) {
+        const yyyy = now.getFullYear();
+        const mm = ("0" + (now.getMonth() + 1)).slice(-2);
+        const dd = ("0" + now.getDate()).slice(-2);
+        const hh = ("0" + now.getHours()).slice(-2);
+        const min = ("0" + now.getMinutes()).slice(-2);
+        return `${yyyy}${mm}${dd}-${hh}${min}`;
+    }
+
+    // --- 共通ヘルパー関数: ファイルダウンロード ---
+    function downloadFile(content, fileName, mimeType) {
+        const blob = new Blob([content], { type: mimeType });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = fileName;
+        a.click();
+    }
+
+    // 1. CSV形式で出力
     function exportCSV() {
         const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
         if(data.length === 0) return alert("データがありません");
@@ -321,18 +345,12 @@
         data.forEach(d => {
             csv += `${d.time},${d.system},${d.lat},${d.lon},${d.x.toFixed(3)},${d.y.toFixed(3)},${d.memo}\n`;
         });
-        
         const now = new Date();
         const fileName = `座標変換-${getTimestampStr(now)}.csv`;
-        
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = fileName;
-        a.click();
+        downloadFile(csv, fileName, 'text/csv;charset=utf-8;');
     }
 
-    // --- 新規追加: GeoJSON出力機能 ---
+    // 2. GeoJSON形式で出力（QGIS用）
     function exportGeoJSON() {
         const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
         if(data.length === 0) return alert("データがありません");
@@ -342,7 +360,7 @@
                 "type": "Feature",
                 "geometry": {
                     "type": "Point",
-                    "coordinates": [d.lon, d.lat] // GeoJSONは [経度, 緯度] の順
+                    "coordinates": [d.lon, d.lat] 
                 },
                 "properties": {
                     "time": d.time,
@@ -363,22 +381,46 @@
         const jsonStr = JSON.stringify(geoJsonData, null, 2);
         const now = new Date();
         const fileName = `座標変換-${getTimestampStr(now)}.geojson`;
-
-        const blob = new Blob([jsonStr], { type: 'application/geo+json' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = fileName;
-        a.click();
+        downloadFile(jsonStr, fileName, 'application/geo+json');
     }
 
-    // 日時文字列生成用ヘルパー関数
-    function getTimestampStr(now) {
-        const yyyy = now.getFullYear();
-        const mm = ("0" + (now.getMonth() + 1)).slice(-2);
-        const dd = ("0" + now.getDate()).slice(-2);
-        const hh = ("0" + now.getHours()).slice(-2);
-        const min = ("0" + now.getMinutes()).slice(-2);
-        return `${yyyy}${mm}${dd}-${hh}${min}`;
+    // 3. KML形式で出力（ALANDIS用）
+    function exportKML() {
+        const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+        if(data.length === 0) return alert("データがありません");
+
+        let kml = `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>座標変換データ</name>
+    <Style id="redPoint">
+      <IconStyle>
+        <Icon><href>http://maps.google.com/mapfiles/kml/paddle/red-circle.png</href></Icon>
+      </IconStyle>
+    </Style>`;
+
+        data.forEach(d => {
+            const name = d.memo ? d.memo : d.time; 
+            const desc = `日時: ${d.time}\n系: ${d.system}\nX: ${d.x}\nY: ${d.y}`;
+            
+            kml += `
+    <Placemark>
+      <name>${name}</name>
+      <description>${desc}</description>
+      <styleUrl>#redPoint</styleUrl>
+      <Point>
+        <coordinates>${d.lon},${d.lat},0</coordinates>
+      </Point>
+    </Placemark>`;
+        });
+
+        kml += `
+  </Document>
+</kml>`;
+
+        const now = new Date();
+        const fileName = `座標変換-${getTimestampStr(now)}.kml`;
+        downloadFile(kml, fileName, 'application/vnd.google-earth.kml+xml');
     }
 
     function clearData() {
@@ -466,8 +508,12 @@
     document.getElementById('btnGps').addEventListener('click', getLocation);
     document.getElementById('btnMap').addEventListener('click', showMap);
     document.getElementById('btnSave').addEventListener('click', saveData);
+    
+    // 3つの出力ボタンのイベント設定
     document.getElementById('btnCsv').addEventListener('click', exportCSV);
-    document.getElementById('btnGeojson').addEventListener('click', exportGeoJSON); // GeoJSONイベント追加
+    document.getElementById('btnGeojson').addEventListener('click', exportGeoJSON);
+    document.getElementById('btnKml').addEventListener('click', exportKML);
+    
     document.getElementById('btnClear').addEventListener('click', clearData);
     document.getElementById('systemSelect').addEventListener('change', updateCoordsIfPossible);
 
